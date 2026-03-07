@@ -1,0 +1,26 @@
+{
+    "manifest_version": 3,
+    "name": "Project JD Browser Monitor",
+    "version": "1.0",
+    "description": "Monitors tab switching and clipboard events for Project JD.",
+    "permissions": [
+        "tabs",
+        "storage"
+    ],
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content.js"
+            ]
+        }
+    ],
+    "background": {
+        "service_worker": "background.js"
+    }
+}
