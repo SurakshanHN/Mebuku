@@ -3,6 +3,8 @@ import threading
 from backend import db
 from backend.rule_engine import rule_engine
 from backend.session_manager import session_manager
+from backend.gemini_engine import gemini_engine
+from datetime import datetime
 
 class SnapshotCoordinator:
     def __init__(self, interval: float = 30.0):
@@ -14,9 +16,14 @@ class SnapshotCoordinator:
         if self.running:
             return
         self.running = True
-        self.thread = threading.Thread(target=self._run_loop, daemon=True)
+        self.thread = threading.Thread(
+            target=self._run_loop, daemon=True
+        )
         self.thread.start()
-        print(f"[COORDINATOR] Started Snapshot Coordinator (Interval: {self.interval}s)")
+        print(
+            f"[COORDINATOR] Started Snapshot Coordinator "
+            f"(Interval: {self.interval}s)"
+        )
 
     def stop(self):
         self.running = False
@@ -25,32 +32,36 @@ class SnapshotCoordinator:
         print("[COORDINATOR] Stopped Snapshot Coordinator.")
 
     def _run_loop(self):
-        # We start the loop aligned to the current time
         last_run = time.time()
-        
         while self.running:
-            time.sleep(1) # Sleep in 1s chunks to allow clean shutdown
+            time.sleep(1)
             now = time.time()
             if now - last_run >= self.interval:
                 self.process_snapshots(last_run, now)
                 last_run = now
 
-    def process_snapshots(self, window_start: float, window_end: float):
+    def process_snapshots(self, window_start, window_end):
         sessions = session_manager._sessions
         if not sessions:
             return
 
-        print(f"\n[COORDINATOR] Processing Snapshots [{window_start:.1f} → {window_end:.1f}] for {len(sessions)} active sessions")
-        
+        ts = datetime.now().strftime("%H:%M:%S")
+        n = len(sessions)
+        print(
+            f"\n[{ts}] [COORDINATOR] Processing {n} sessions "
+            f"[{window_start:.1f} → {window_end:.1f}]"
+        )
+
         for session_id in sessions.keys():
-            # Get only the events in this latest 30s window
-            events = db.get_session_events(session_id, start_time=window_start, end_time=window_end)
-            
-            # Even if there are no new events, we might evaluate to 0.0 or decay risk
-            # Evaluate using symbolic rule engine
+            events = db.get_session_events(
+                session_id,
+                start_time=window_start,
+                end_time=window_end
+            )
+
+            # Step 1: Symbolic Rule Engine (fast, deterministic)
             rules_fired, score = rule_engine.evaluate(events)
-            
-            # Save the result to the resilient Timeline DB
+
             db.log_timeline_entry(
                 session_id=session_id,
                 window_start=window_start,
@@ -58,8 +69,50 @@ class SnapshotCoordinator:
                 rules_fired=rules_fired,
                 composite_score=score
             )
-            
-            print(f"  └ Session {session_id} | Events: {len(events)} | Rules: {rules_fired} | Score: {score:.2f}")
+
+            print(
+                f"  ├ SYMBOLIC | Session {session_id} "
+                f"| Events: {len(events)} "
+                f"| Rules: {rules_fired} | Score: {score:.2f}"
+            )
+
+            # Step 2: Gemini Neural Engine (deep reasoning)
+            if events or rules_fired:
+                judgment = gemini_engine.analyze_chunk(
+                    events=events,
+                    rules_fired=rules_fired,
+                    symbolic_score=score,
+                    window_start=window_start,
+                    window_end=window_end
+                )
+
+                if judgment and judgment.get("verdict") != "ERROR":
+                    db.log_gemini_judgment(
+                        session_id=session_id,
+                        window_start=window_start,
+                        window_end=window_end,
+                        verdict=judgment.get("verdict", "?"),
+                        confidence=judgment.get(
+                            "confidence", 0.0
+                        ),
+                        reasoning=judgment.get(
+                            "reasoning", ""
+                        ),
+                        rules_context=rules_fired,
+                        analyzed_at=judgment.get(
+                            "analyzed_at",
+                            datetime.now().isoformat()
+                        )
+                    )
+
+                    v = judgment.get("verdict", "?")
+                    c = judgment.get("confidence", 0)
+                    r = judgment.get("reasoning", "")[:80]
+                    print(
+                        f"  └ GEMINI   | Verdict: {v} "
+                        f"| Confidence: {c:.0%} "
+                        f"| {r}"
+                    )
 
 # Singleton
 coordinator = SnapshotCoordinator()

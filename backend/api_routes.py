@@ -100,6 +100,29 @@ async def get_session_timeline(session_id: str):
         "timeline": timeline
     }
 
+@app.get("/session/{session_id}/judgments")
+async def get_session_judgments(session_id: str):
+    judgments = db.get_gemini_judgments(session_id)
+    return {
+        "session_id": session_id,
+        "judgments": judgments,
+        "total": len(judgments)
+    }
+
+@app.post("/session/{session_id}/analyze")
+async def analyze_full_session(session_id: str):
+    from backend.gemini_engine import gemini_engine
+    timeline = db.get_session_timeline(session_id)
+    judgments = db.get_gemini_judgments(session_id)
+    all_events = db.get_session_events(session_id)
+    result = gemini_engine.analyze_full_session(
+        session_id=session_id,
+        timeline=timeline,
+        judgments=judgments,
+        all_events=all_events
+    )
+    return result
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}

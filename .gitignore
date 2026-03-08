@@ -25,3 +25,4 @@ sim_*.py
 verify_pipeline.py
 extract_docx.py
 internal_audit.py
+.env

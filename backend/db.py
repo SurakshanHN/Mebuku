@@ -50,6 +50,22 @@ def init_db():
     )
     """)
     
+    # Store per-chunk Gemini AI judgments (Phase 12)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS gemini_judgments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT,
+        window_start REAL,
+        window_end REAL,
+        verdict TEXT,
+        confidence REAL,
+        reasoning TEXT,
+        rules_context_json TEXT,
+        analyzed_at TEXT,
+        FOREIGN KEY(session_id) REFERENCES sessions(session_id)
+    )
+    """)
+    
     conn.commit()
     conn.close()
 
@@ -128,6 +144,56 @@ def get_session_timeline(session_id: str) -> List[Dict[str, Any]]:
             "score": row[3]
         })
     return timeline
+
+def log_gemini_judgment(
+    session_id: str,
+    window_start: float,
+    window_end: float,
+    verdict: str,
+    confidence: float,
+    reasoning: str,
+    rules_context: list,
+    analyzed_at: str
+):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        """INSERT INTO gemini_judgments
+        (session_id, window_start, window_end,
+         verdict, confidence, reasoning,
+         rules_context_json, analyzed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (session_id, window_start, window_end,
+         verdict, confidence, reasoning,
+         json.dumps(rules_context), analyzed_at)
+    )
+    conn.commit()
+    conn.close()
+
+def get_gemini_judgments(session_id: str):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT window_start, window_end, verdict,
+        confidence, reasoning, rules_context_json,
+        analyzed_at FROM gemini_judgments
+        WHERE session_id = ? ORDER BY window_start ASC""",
+        (session_id,)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    judgments = []
+    for row in rows:
+        judgments.append({
+            "window_start": row[0],
+            "window_end": row[1],
+            "verdict": row[2],
+            "confidence": row[3],
+            "reasoning": row[4],
+            "rules_context": json.loads(row[5]),
+            "analyzed_at": row[6]
+        })
+    return judgments
 
 # Initialize on module import
 init_db()
