@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -6,8 +6,9 @@ from backend.session_manager import session_manager
 from backend.event_store import event_store, Event
 from backend.risk_engine import risk_engine
 from backend.snapshot_coordinator import coordinator
+from backend.websocket_manager import ws_manager
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 class SessionStartRequest(BaseModel):
     candidate_id: str
@@ -99,6 +100,61 @@ async def get_session_timeline(session_id: str):
         "session_id": session_id,
         "timeline": timeline
     }
+
+# ==========================================
+# WebSocket Endpoints (Phase 11)
+# ==========================================
+
+@app.websocket("/ws/dash/{session_id}")
+async def websocket_dash_endpoint(websocket: WebSocket, session_id: str):
+    """
+    Interviewer Dashboard Connection
+    Subscribes to live risk timeline and AI verdict updates for a specific session.
+    """
+    await ws_manager.connect(websocket, session_id)
+    try:
+        while True:
+            # We don't expect the dashboard to send much, mostly just listen
+            # But we must await receive_text() to keep the connection open
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket, session_id)
+
+@app.websocket("/ws/sync/{session_id}")
+async def websocket_sync_endpoint(websocket: WebSocket, session_id: str):
+    """
+    Candidate SyncAgent Connection
+    Receives batched telemetry deltas and forwards them to the DB.
+    """
+    # Accept connection but we don't necessarily need to add to ws_manager 
+    # since we only BROADCAST to dashboards, not back to the candidate.
+    # But we can add them to a different group if we ever want to send commands.
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_json()
+            if "events" in data:
+                for ev in data["events"]:
+                    # Store via Event schema and event_store
+                    try:
+                        e = Event(**ev)
+                        event_store.add_event(e)
+                    except Exception as e:
+                        print(f"[WS SYNC] Error adding event: {e}")
+                        
+            # Note: The Candidate push doesn't automatically broadcast to Dashboard.
+            # It goes into EventStore/DB. The Dashboard broadcast happens 
+            # when the SnapshotCoordinator finishes a 30s cycle, OR we could 
+            # broadcast raw events immediately right here:
+            msg = {
+                "type": "raw_events",
+                "session_id": session_id,
+                "events": data.get("events", [])
+            }
+            await ws_manager.broadcast_to_session(session_id, msg)
+            
+    except WebSocketDisconnect:
+        print(f"[WS SYNC] SyncAgent disconnected for session {session_id}")
 
 @app.get("/session/{session_id}/judgments")
 async def get_session_judgments(session_id: str):

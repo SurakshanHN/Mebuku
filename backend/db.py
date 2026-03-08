@@ -28,7 +28,9 @@ def init_db():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id TEXT UNIQUE,
         session_id TEXT,
+        question_id TEXT,
         signal_type TEXT,
         value REAL,
         timestamp REAL,
@@ -79,13 +81,17 @@ def log_session(session_id: str, candidate_id: str):
     conn.commit()
     conn.close()
 
-def log_event(session_id: str, signal_type: str, value: float, timestamp: float, details: Dict[str, Any] = None):
+def log_event(session_id: str, signal_type: str, value: float, timestamp: float, details: Dict[str, Any] = None, event_id: str = None, question_id: str = None):
+    import uuid
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     details_str = json.dumps(details) if details else "{}"
+    if not event_id:
+        event_id = f"evt-{str(uuid.uuid4())[:8]}"
+        
     cursor.execute(
-        "INSERT INTO events (session_id, signal_type, value, timestamp, details_json) VALUES (?, ?, ?, ?, ?)",
-        (session_id, signal_type, value, timestamp, details_str)
+        "INSERT INTO events (event_id, session_id, question_id, signal_type, value, timestamp, details_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (event_id, session_id, question_id, signal_type, value, timestamp, details_str)
     )
     conn.commit()
     conn.close()
@@ -109,7 +115,7 @@ def get_session_events(session_id: str, start_time: float = 0, end_time: float =
         end_time = time.time()
         
     cursor.execute(
-        "SELECT signal_type, value, timestamp, details_json FROM events WHERE session_id = ? AND timestamp >= ? AND timestamp <= ? ORDER BY timestamp ASC",
+        "SELECT event_id, question_id, signal_type, value, timestamp, details_json FROM events WHERE session_id = ? AND timestamp >= ? AND timestamp <= ? ORDER BY timestamp ASC",
         (session_id, start_time, end_time)
     )
     rows = cursor.fetchall()
@@ -118,10 +124,12 @@ def get_session_events(session_id: str, start_time: float = 0, end_time: float =
     events = []
     for row in rows:
         events.append({
-            "signal": row[0],
-            "value": row[1],
-            "timestamp": row[2],
-            "details": json.loads(row[3])
+            "event_id": row[0],
+            "question_id": row[1],
+            "signal": row[2],
+            "value": row[3],
+            "timestamp": row[4],
+            "details": json.loads(row[5])
         })
     return events
 

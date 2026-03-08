@@ -1,9 +1,11 @@
 import time
 import threading
+import asyncio
 from backend import db
 from backend.rule_engine import rule_engine
 from backend.session_manager import session_manager
 from backend.gemini_engine import gemini_engine
+from backend.websocket_manager import ws_manager
 from datetime import datetime
 
 class SnapshotCoordinator:
@@ -72,6 +74,20 @@ class SnapshotCoordinator:
                 rules_fired=rules_fired,
                 composite_score=score
             )
+            
+            # Broadcast Timeline Update
+            timeline_msg = {
+                "type": "timeline_update",
+                "session_id": session_id,
+                "window_start": window_start,
+                "window_end": window_end,
+                "rules_fired": rules_fired,
+                "score": score
+            }
+            try:
+                asyncio.run(ws_manager.broadcast_to_session(session_id, timeline_msg))
+            except Exception as e:
+                print(f"[COORDINATOR] Broadcast error: {e}")
 
             print(
                 f"  ├ SYMBOLIC | Session {session_id} "
@@ -107,6 +123,19 @@ class SnapshotCoordinator:
                             datetime.now().isoformat()
                         )
                     )
+                    
+                    # Broadcast AI Judgment
+                    ai_msg = {
+                        "type": "ai_judgment",
+                        "session_id": session_id,
+                        "verdict": judgment.get("verdict", "?"),
+                        "confidence": judgment.get("confidence", 0.0),
+                        "reasoning": judgment.get("reasoning", "")
+                    }
+                    try:
+                        asyncio.run(ws_manager.broadcast_to_session(session_id, ai_msg))
+                    except Exception as e:
+                        print(f"[COORDINATOR] Broadcast AI error: {e}")
 
                     v = judgment.get("verdict", "?")
                     c = judgment.get("confidence", 0)
