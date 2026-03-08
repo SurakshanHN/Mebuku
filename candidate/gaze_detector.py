@@ -14,10 +14,12 @@ from candidate.event_client import EventClient
 
 # MediaPipe Face Landmarker setup
 # Note: This requires a face_landmarker.task file
-MODEL_PATH = "face_landmarker.task"
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+MODEL_PATH = os.path.join(ROOT_DIR, "data", "face_landmarker.task")
 
 def download_model():
     if not os.path.exists(MODEL_PATH):
+        os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
         print(f"Downloading MediaPipe Face Landmarker model to {MODEL_PATH}...")
         import urllib.request
         url = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"

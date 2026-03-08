@@ -1,0 +1,98 @@
+
+
+AI Interview Cheating Detection
+Full Detection Stack Implementation Guide
+Gaze Tracking  ·  Cognitive Latency  ·  Speech Analysis  ·  Unified Log  ·  Rule Engine  ·  Gemini AI Layer
+
+
+
+
+PART 1 — Unified JSON Log Format
+Every detection module — gaze, latency, speech — writes to a single shared log file on the candidate machine. This unified format is the contract between all modules, the risk engine, and the Gemini API layer. Nothing outside this schema is accepted.
+
+1.1 Master Session Log Schema
+
+1.2 Universal Event Object
+Every signal from every module is appended as a single event object. The schema is identical regardless of source. Modules never write custom formats.
+
+
+
+1.3 Periodic Snapshot Object
+Every 30 seconds, a coordinator process aggregates open signals into a snapshot. This lets the risk engine operate on windows without scanning the full event list each time.
+
+
+1.4 Risk Timeline Entry
+After every snapshot, the risk engine writes one risk timeline entry. This array becomes the primary input to the Gemini analysis layer at session end.
+
+
+1.5 Signal Registry
+All valid signal names are declared in this registry. Any event with an unregistered signal name is rejected by the log writer.
+
+
+1.6 Log File Management
+
+
+PART 2 — Three Detection Modules
+
+2.1 Module Coordinator (Start Here)
+The Coordinator is the single entry point. It starts all three detectors, owns the LogWriter, and broadcasts the question_end signal to the latency module when the interviewer marks it.
+
+
+2.2 Module A — Gaze Detector (MediaPipe)
+
+2.3 Module B — Latency Detector (WebRTC VAD)
+
+2.4 Module C — Speech Detector (Whisper + spaCy)
+
+
+PART 3 — Real-Time Sync to Interviewer
+The interviewer dashboard receives live updates via a WebSocket connection from the backend. The candidate machine sends incremental JSON diffs (deltas) every 5 seconds, not the full log. This keeps bandwidth low while maintaining near-real-time visibility.
+
+3.1 Sync Architecture
+
+3.2 SyncAgent — Candidate Side
+
+3.3 Dashboard WebSocket Payload
+Each WebSocket push to the interviewer contains only what changed, formatted for direct UI rendering:
+
+
+
+PART 4 — Symbolic Rule-Based Risk Engine
+The rule engine is the first layer of analysis. It runs on the backend every time a new snapshot arrives. It uses classical data structures for efficiency and produces a list of fired rules and a composite score — which then feeds the Gemini layer.
+
+4.1 Data Structures Used
+
+4.2 Rule Definitions
+Rules are evaluated in priority order. Each rule returns True/False and a severity level. When a rule fires, it is appended to the rules_fired list in the risk timeline entry.
+
+
+4.3 Score Aggregation
+
+
+PART 5 — Gemini API Analysis Layer
+The Gemini layer runs in two modes: (1) a mid-session alert if the rule engine hits CRITICAL, and (2) a full post-session analysis that receives the complete JSON log and risk timeline. Gemini applies pattern recognition that symbolic rules cannot — cross-question trend analysis, temporal clustering, and natural language reasoning about speech content.
+
+5.1 What Gemini Adds Over Rules
+
+5.2 Mid-Session Gemini Call (CRITICAL Alert)
+
+5.3 Full Post-Session Analysis
+
+
+PART 6 — Snapshot Coordinator & Risk Loop
+The SnapshotCoordinator runs on the backend. Every 30 seconds it reads the latest events from the session log, builds a snapshot, runs the rule engine, optionally calls Gemini, and writes results back to the log.
+
+
+
+PART 7 — Verification Protocol
+
+
+7.1 Tier 1 — Unit Tests (No Hardware Required)
+
+7.2 Tier 2 — Pipeline Tests
+
+7.3 Tier 3 — Full Scenario Test
+
+
+PART 8 — Full Stack Startup Sequence
+

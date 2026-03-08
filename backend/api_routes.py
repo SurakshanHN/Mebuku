@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from backend.session_manager import session_manager
 from backend.event_store import event_store, Event
 from backend.risk_engine import risk_engine
+from backend.snapshot_coordinator import coordinator
 
 from typing import Optional, Dict, Any
 
@@ -19,6 +20,14 @@ class EventSchema(BaseModel):
     details: Optional[Dict[str, Any]] = None
 
 app = FastAPI(title="Project JD Backend")
+
+@app.on_event("startup")
+async def startup_event():
+    coordinator.start()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    coordinator.stop()
 
 app.add_middleware(
     CORSMiddleware,
@@ -82,6 +91,14 @@ async def get_session_events(session_id: str):
     
     events = event_store.get_session_events(session_id)
     return {"session_id": session_id, "events": events}
+
+@app.get("/session/{session_id}/timeline")
+async def get_session_timeline(session_id: str):
+    timeline = db.get_session_timeline(session_id)
+    return {
+        "session_id": session_id,
+        "timeline": timeline
+    }
 
 @app.get("/health")
 async def health_check():
