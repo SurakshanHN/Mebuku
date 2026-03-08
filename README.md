@@ -76,7 +76,6 @@ All forensic data is securely persisted to an immutable SQLite store, maintainin
 git clone https://github.com/SurakshanHN/Mebuku.git
 cd Mebuku
 pip install -r requirements.txt
-echo "GEMINI_API_KEY=your_production_key" > .env
 ```
 
 2. **Boot the Backend Orchestrator:**
