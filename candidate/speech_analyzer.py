@@ -5,6 +5,7 @@ import os
 import requests
 import json
 import re
+from candidate.event_client import EventClient
 
 # Try importing ML dependencies
 try:
@@ -22,6 +23,7 @@ class SpeechAnalyzer:
     def __init__(self, session_id: str, backend_url: str):
         self.session_id = session_id
         self.backend_url = backend_url
+        self.client = EventClient(session_id, backend_url)
         self.model = None
         self.is_recording = False
         self.audio_frames = []
@@ -96,14 +98,7 @@ class SpeechAnalyzer:
             print(f"\n[SPEECH] Result | Robotic: {is_robotic} | Text: '{text[:50]}...'")
             print(f"[SYNC] Sending audio_anomaly event...")
             
-            payload = {
-                "session_id": self.session_id,
-                "signal": "audio_anomaly",
-                "value": flag_value,
-                "timestamp": time.time(),
-                "details": details
-            }
-            requests.post(f"{self.backend_url}/event", json=payload, timeout=2)
+            self.client.send_event("audio_anomaly", flag_value, details=details)
             
         except Exception as e:
             print(f"[SPEECH] Transcription failed: {e}")

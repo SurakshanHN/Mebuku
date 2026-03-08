@@ -4,6 +4,7 @@ import numpy as np
 import requests
 import os
 import sys
+from candidate.event_client import EventClient
 
 # Try to import dependencies, handle missing gracefully for first run
 try:
@@ -22,6 +23,7 @@ class LatencyDetector:
     def __init__(self, session_id: str, backend_url: str):
         self.session_id = session_id
         self.backend_url = backend_url
+        self.client = EventClient(session_id, backend_url)
         self.vad = webrtcvad.Vad(VAD_AGGRESSIVENESS) if webrtcvad else None
         self.question_end_ts = None
         self.waiting = False
@@ -48,15 +50,8 @@ class LatencyDetector:
             self._post_event(delta)
 
     def _post_event(self, value: float):
-        payload = {
-            "session_id": self.session_id,
-            "signal": "response_latency",
-            "value": round(value, 3),
-            "timestamp": time.time(),
-            "details": {"latency_sec": round(value, 3)}
-        }
         try:
-            requests.post(f"{self.backend_url}/event", json=payload, timeout=2)
+            self.client.send_event("response_latency", value, details={"latency_sec": round(value, 3)})
             print(f"[SYNC] Sent response_latency={value:.3f}")
         except Exception as e:
             print(f"[SYNC ERROR] Failed to send latency: {e}")
