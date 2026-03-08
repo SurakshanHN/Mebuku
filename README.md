@@ -6,7 +6,7 @@
 
 <br/>
 
-## 🎙️ Executive Summary
+## Executive Summary
 
 **The technical hiring landscape has sustained a catastrophic integrity breach.** Modern GenAI sidecar tools—typified by applications like ParakeetAI—have rendered legacy proctoring solutions functionally obsolete.
 
@@ -19,7 +19,7 @@ We don't need to see ParakeetAI running. We track the physiological toll of coor
 
 ---
 
-## ⚔️ Defeating the State-of-the-Art (The Mebuku Paradigm)
+## Defeating the State-of-the-Art (The Mebuku Paradigm)
 
 Modern cheat tools are invisible to legacy systems because they attack the physical air-gap. How does Mebuku systematically dismantle them?
 
@@ -38,7 +38,7 @@ Modern cheat tools are invisible to legacy systems because they attack the physi
 
 ---
 
-## 🏛️ System Architecture
+##  System Architecture
 
 TruthLens employs a hybrid deterministic/neural architecture to ensure absolute protection for genuine candidates while ruthlessly flagging synthetic behavior.
 
@@ -62,7 +62,7 @@ All forensic data is securely persisted to an immutable SQLite store, maintainin
 
 ---
 
-## 🛠️ Deployment & Operations
+## Deployment & Operations
 
 ### Prerequisites
 * Python 3.10+
@@ -73,8 +73,8 @@ All forensic data is securely persisted to an immutable SQLite store, maintainin
 
 1. **Clone & Configure Environment:**
 ```bash
-git clone https://github.com/SurakshanHN/JD.git
-cd JD
+git clone https://github.com/SurakshanHN/Mebuku.git
+cd Mebuku
 pip install -r requirements.txt
 echo "GEMINI_API_KEY=your_production_key" > .env
 ```
@@ -97,7 +97,7 @@ The system is now live. Telemetry flows asynchronously from the Candidate Endpoi
 
 ---
 
-## 🔒 Security & Privacy Posture (Zero-Trust)
+##  Security & Privacy Posture (Zero-Trust)
 TruthLens was built to respect candidate dignity while enforcing interview integrity.
 * **No PII Collection:** We do not record standard video, take facial recognition screenshots, or gather personally identifiable biometrics.
 * **No Keystroke Logging:** We infer behavior through clipboard volumetric analysis and active process polling, never through covert keyboard hooking.
