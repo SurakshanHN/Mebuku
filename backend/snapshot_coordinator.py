@@ -52,7 +52,10 @@ class SnapshotCoordinator:
             f"[{window_start:.1f} → {window_end:.1f}]"
         )
 
-        for session_id in sessions.keys():
+        for session_id, sess_obj in sessions.items():
+            if getattr(sess_obj, 'status', 'active') != 'active':
+                continue
+
             events = db.get_session_events(
                 session_id,
                 start_time=window_start,

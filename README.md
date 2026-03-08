@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🛡️ TruthLens</h1>
+  <h1>🌱 Mebuku</h1>
   <p><b>The Zero-Trust Cognitive Forensics Engine</b></p>
   <p><i>Defeating Next-Generation AI Interview Interference at the Behavioral Tier.</i></p>
 </div>
@@ -8,28 +8,27 @@
 
 ## 🎙️ Executive Summary
 
-**The technical hiring landscape has sustained a catastrophic integrity breach.** Modern GenAI sidecar tools—typified by applications like ParakeetAI or invisible screen overlays—have rendered legacy proctoring solutions functionally obsolete. These tools do not trigger traditional blacklists; they operate probabilistically, silently assisting candidates off-screen or via discrete audio loops.
+**The technical hiring landscape has sustained a catastrophic integrity breach.** Modern GenAI sidecar tools—typified by applications like ParakeetAI—have rendered legacy proctoring solutions functionally obsolete.
 
-**TruthLens is not a proctoring tool.** It is a **Cognitive Forensics Engine**. 
+**Mebuku is not a proctoring tool.** It is a **Cognitive Forensics Engine**. 
 
 We operate on a fundamental architectural truth: *It is impossible for a human to interface with a clandestine AI assistant without leaking measurable behavioral artifacts.* 
 
-Instead of playing a losing game of whack-a-mole chasing blacklisted process signatures or hidden browser plugins, TruthLens triangulates the human **cognitive signature**. By continuously analyzing the delta between human response latency, sub-second micro-gaze drift, and linguistic perplexity, we mathematically quantify artificial assistance. If a candidate delivers structurally perfect, textbook code while their gaze sustains an unnatural focal distance and their verbal response latency drops below the human cognitive threshold, they are receiving off-screen help—regardless of the tool they are using.
-
+...
 We don't need to see ParakeetAI running. We track the physiological toll of coordinating with it.
 
 ---
 
-## ⚔️ Defeating the State-of-the-Art (The TruthLens Paradigm)
+## ⚔️ Defeating the State-of-the-Art (The Mebuku Paradigm)
 
-Modern cheat tools are invisible to legacy systems because they attack the physical air-gap. How does TruthLens systematically dismantle them?
+Modern cheat tools are invisible to legacy systems because they attack the physical air-gap. How does Mebuku systematically dismantle them?
 
 ### Case Study 1: The Invisible Audio Sidecar (e.g., ParakeetAI)
 * **The Attack:** The tool captures system audio, feeds the interview questions to an LLM, and streams the answer back to the candidate via an earpiece or an invisible overlay. The human acts merely as a teleprompter reading the AI's output.
-* **The TruthLens Defense (Triangulation):** 
-  1. **Cognitive Latency Analysis (VAD):** Human spontaneous thought requires measurable processing time. TruthLens monitors millisecond-level variances in voice activity (VAD). A "zero-thought" perfect technical response violates human cognitive thresholds.
-  2. **Reading Pattern Detection (MediaPipe):** The human eye moves fundamentally differently when *recalling* information versus *reading* it. TruthLens runs a localized MediaPipe FaceMesh to track micro-gaze drift down to the iris level. The moment the candidate locks onto the invisible text feed, the signature changes.
-  3. **Linguistic Perplexity (Whisper):** The system transcribes the candidate's speech and analyzes the structural entropy. "Robotic" pacing and unnatural phrasing are flagged by our NLP pipelines.
+* **The Mebuku Defense (Triangulation):** 
+  1. **Cognitive Latency Analysis (VAD):** Human spontaneous thought requires measurable processing time. Mebuku monitors millisecond-level variances in voice activity (VAD). A "zero-thought" perfect technical response violates human cognitive thresholds.
+  2. **Reading Pattern Detection (MediaPipe):** The human eye moves fundamentally differently when *recalling* information versus *reading* it. Mebuku runs a localized MediaPipe FaceMesh to track micro-gaze drift down to the iris level. 
+  3. **Linguistic Perplexity (Whisper):** The system transcribes the candidate's speech and analyzes the structural entropy. 
 
 ### Case Study 2: The IDE Copilot / Auto-Solver
 * **The Attack:** The candidate uses a second monitor or a hidden tab to paste the coding challenge into ChatGPT or an IDE copilot.
