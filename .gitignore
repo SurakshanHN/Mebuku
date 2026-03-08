@@ -1,0 +1,27 @@
+# Ignore Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore database and data files
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Ignore log files
+*.log
+
+# Ignore OS files
+.DS_Store
+
+# Virtual environment
+venv/
+env/
+.env
+
+# Ignore temporary simulation/test scripts
+sim_*.py
+verify_pipeline.py
+extract_docx.py
+internal_audit.py

@@ -17,7 +17,7 @@ class EventClient:
         print(f"[CLIENT] Started session: {self.session_id}")
         return self.session_id
 
-    def send_event(self, signal: str, value: float):
+    def send_event(self, signal: str, value: float, details: dict = None):
         if not self.session_id:
             raise ValueError("Session not started. Call start_session() first.")
         
@@ -26,7 +26,8 @@ class EventClient:
             "session_id": self.session_id,
             "signal": signal,
             "value": value,
-            "timestamp": time.time()
+            "timestamp": time.time(),
+            "details": details
         }
         response = requests.post(url, json=payload)
         response.raise_for_status()

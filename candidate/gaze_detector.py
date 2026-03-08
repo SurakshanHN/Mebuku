@@ -26,37 +26,44 @@ def download_model():
 
 def get_gaze_direction(face_landmarks):
     """
-    Simplified gaze detection logic using face landmarker results.
+    Computes precise gaze direction using MediaPipe Iris landmarks.
+    Right Eye Corners: 33 (outer), 133 (inner). Right Iris: 468
+    Left Eye Corners: 362 (inner), 263 (outer). Left Iris: 473
     """
-    # Landmarks are in a normalized list
-    # We'll use a simplified check based on horizontal position of eye landmarks
-    # Left eye: 468, Right eye: 473 (approx iris centers)
-    # These indices might vary slightly in the new API but we can estimate
-    
-    # For now, let's use a robust heuristic: 
-    # Compare iris position relative to eye corners if available, 
-    # or just use facial rotation (yaw) which is more stable for "looking away"
-    
-    # For demo purposes, we will detect if the face is turned significantly
-    # as looking at a side monitor forces a head turn.
-    
-    # We will use landmarks to estimate yaw
-    nose_tip = face_landmarks[1]
-    left_eye = face_landmarks[33]
-    right_eye = face_landmarks[263]
-    
-    # Rough yaw estimate: compare nose distance to eyes
-    left_dist = abs(nose_tip.x - left_eye.x)
-    right_dist = abs(nose_tip.x - right_eye.x)
-    
-    ratio = left_dist / (right_dist if right_dist > 0 else 0.001)
-    
-    if ratio > 1.8: # Turned significantly right
-        return "RIGHT"
-    elif ratio < 0.55: # Turned significantly left
-        return "LEFT"
-    else:
-        return "CENTER"
+    try:
+        # Right Eye
+        r_outer = face_landmarks[33]
+        r_inner = face_landmarks[133]
+        r_iris = face_landmarks[468]
+        
+        # Left Eye
+        l_inner = face_landmarks[362]
+        l_outer = face_landmarks[263]
+        l_iris = face_landmarks[473]
+        
+        # Calculate Iris position relative to eye width
+        # 0.0 = looking completely inward, 1.0 = completely outward
+        r_eye_width = abs(r_outer.x - r_inner.x)
+        r_iris_pos = (abs(r_iris.x - r_inner.x)
+                      / (r_eye_width if r_eye_width > 0 else 0.001))
+        
+        l_eye_width = abs(l_outer.x - l_inner.x)
+        l_iris_pos = (abs(l_iris.x - l_inner.x)
+                      / (l_eye_width if l_eye_width > 0 else 0.001))
+        
+        avg_pos = (r_iris_pos + l_iris_pos) / 2.0
+        
+        # FIX 4: Widened thresholds — human iris typically stays 0.3-0.7
+        # Old: 0.65/0.35 (too extreme, never triggered)
+        # New: 0.55/0.45 (triggers on moderate eye movement)
+        if avg_pos > 0.55:
+            return "LEFT", round(avg_pos, 3)
+        elif avg_pos < 0.45:
+            return "RIGHT", round(avg_pos, 3)
+        else:
+            return "CENTER", round(avg_pos, 3)
+    except IndexError:
+        return "CENTER", 0.5
 
 def run_gaze_detector(session_id=None):
     download_model()
@@ -90,6 +97,10 @@ def run_gaze_detector(session_id=None):
         drift_frames = 0
         total_frames = 0
         start_time = time.time()
+        
+        # Reading pattern tracking
+        reading_start = None
+        current_gaze = "CENTER"
 
         print("AI Model Loaded. Please look at the camera.")
 
@@ -104,25 +115,50 @@ def run_gaze_detector(session_id=None):
             detection_result = detector.detect_for_video(mp_image, timestamp_ms)
 
             direction = "CENTER"
+            iris_pos = 0.5
             if detection_result.face_landmarks:
                 face_landmarks = detection_result.face_landmarks[0]
-                direction = get_gaze_direction(face_landmarks)
+                direction, iris_pos = get_gaze_direction(face_landmarks)
                 
                 total_frames += 1
                 if direction != "CENTER":
                     drift_frames += 1
+                    if current_gaze == "CENTER":
+                        reading_start = time.time()
+                else:
+                    reading_start = None
+                
+                current_gaze = direction
 
             # Print real-time classification to terminal
             score = drift_frames/(total_frames if total_frames > 0 else 1)
-            sys.stdout.write(f"\rGaze Direction: {direction: <10} | Drift Score: {score:.2f}")
+            sys.stdout.write(
+                f"\rGaze: {direction:<8} | "
+                f"Iris: {iris_pos:.3f} | "
+                f"Drift: {score:.2f}"
+            )
             sys.stdout.flush()
 
             # Every 10 seconds send sync event
             if time.time() - start_time >= 10:
-                print(f"\n[SYNC] Sending gaze_drift event: {score:.2f}")
-                client.send_event("gaze_drift", score)
+                print(f"\n[SYNC] Sending gaze_drift: {score:.2f}")
+                
+                dur = 0.0
+                if reading_start and current_gaze != "CENTER":
+                    dur = round(time.time() - reading_start, 2)
+                
+                details = {
+                    "direction": current_gaze,
+                    "iris_position": iris_pos,
+                    "duration_sec": dur,
+                    "reading_pattern_detected": bool(score > 0.3)
+                }
+                
+                client.send_event("gaze_drift", score, details=details)
+                
                 drift_frames = 0
                 total_frames = 0
+                reading_start = None  # BUG 5 FIX: reset so duration is per-window
                 start_time = time.time()
 
             if cv2.waitKey(5) & 0xFF == 27:
@@ -135,6 +171,5 @@ def run_gaze_detector(session_id=None):
         print(f"\nGaze Detector Error: {e}")
 
 if __name__ == "__main__":
-    import sys
     sid = sys.argv[1] if len(sys.argv) > 1 else None
     run_gaze_detector(sid)

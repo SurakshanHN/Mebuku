@@ -52,7 +52,8 @@ class LatencyDetector:
             "session_id": self.session_id,
             "signal": "response_latency",
             "value": round(value, 3),
-            "timestamp": time.time()
+            "timestamp": time.time(),
+            "details": {"latency_sec": round(value, 3)}
         }
         try:
             requests.post(f"{self.backend_url}/event", json=payload, timeout=2)
@@ -66,14 +67,27 @@ class LatencyDetector:
             print("[LATENCY] VAD not available. Skipping audio monitoring.")
             return
             
+        import candidate.speech_analyzer as sa
+        self.analyzer = sa.SpeechAnalyzer(self.session_id, self.backend_url)
+        self.analyzer.load_model()
+            
         threading.Thread(target=self._mic_callback_loop, daemon=True).start()
 
     def _mic_callback_loop(self):
         """Uses sounddevice for a simpler cross-platform stream."""
         # Frame size in samples
         frame_size = int(SAMPLE_RATE * FRAME_MS / 1000)
+        # Track whether we've already triggered recording for this question
+        self._recording_active = False
         
         def callback(indata, frames, time_info, status):
+            # ALWAYS feed audio to analyzer first, BEFORE any early returns.
+            # BUG 9 FIX: The old code returned early on `not self.waiting`,
+            # which meant the analyzer never received audio frames after
+            # the first speech detection set waiting=False.
+            if hasattr(self, 'analyzer') and self._recording_active:
+                self.analyzer.append_audio(indata)
+                
             if not self.waiting:
                 return
             
@@ -82,10 +96,23 @@ class LatencyDetector:
             
             try:
                 if self.vad.is_speech(audio_data, SAMPLE_RATE):
-                    # We trigger on the first detected speech frame for maximum precision
-                    self._on_speech_detected(time.time())
-            except Exception as e:
-                pass # VAD might error on empty frames
+                    onset = time.time()
+                    self._on_speech_detected(onset)
+                    
+                    # Start recording for linguistic analysis
+                    if hasattr(self, 'analyzer') and not self._recording_active:
+                        self._recording_active = True
+                        self.analyzer.start_recording()
+                        
+                        delta = onset - self.question_end_ts if self.question_end_ts else 0.0
+                        # Stop recording after 10s and hand off to Whisper
+                        def _stop_and_reset(lat):
+                            self.analyzer.stop_recording_and_analyze(lat)
+                            self._recording_active = False
+                        threading.Timer(10.0, _stop_and_reset, args=[delta]).start()
+                        
+            except Exception:
+                pass  # VAD might error on empty frames
 
         with sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype='float32', 
                           blocksize=frame_size, callback=callback):

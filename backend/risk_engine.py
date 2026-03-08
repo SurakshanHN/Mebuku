@@ -9,11 +9,12 @@ class RiskEngine:
         # 2. Focus Loss (Definitive breach)
         # 3. Gaze (Behavioral context)
         self.weights = {
-            "window_focus_loss": 0.35,  # Increased: strongest binary indicator
-            "response_latency": 0.30,   # High: Phase 3 core detection
+            "window_focus_loss": 0.25,  # Strong binary indicator
+            "response_latency": 0.25,   # Phase 3 core detection
+            "audio_anomaly": 0.20,      # Whisper linguistic analysis
             "gaze_drift": 0.15,         # Contextual
-            "process_anomaly": 0.10,    # Supplemental
-            "clipboard_event": 0.10     # Supplemental (often implies focus loss anyway)
+            "clipboard_event": 0.10,    # Supplemental
+            "process_anomaly": 0.05     # Supplemental
         }
 
     def compute_latency_score(self, latencies: List[float]) -> float:

@@ -1,6 +1,7 @@
 from dataclasses import dataclass, asdict
-from typing import List, Dict
+from typing import List, Dict, Any
 import time
+from backend import db
 
 @dataclass
 class Event:
@@ -8,20 +9,17 @@ class Event:
     signal: str
     value: float
     timestamp: float
+    details: Dict[str, Any] = None
 
 class EventStore:
-    def __init__(self):
-        self._events: Dict[str, List[Event]] = {}
-
     def add_event(self, event: Event):
-        if event.session_id not in self._events:
-            self._events[event.session_id] = []
-        self._events[event.session_id].append(event)
-        print(f"[STORE] Added event: {event.signal}={event.value} for session {event.session_id}")
+        details_val = event.details if event.details else {}
+        db.log_event(event.session_id, event.signal, event.value, event.timestamp, details_val)
+        print(f"[STORE] Saved event to SQLite: {event.signal}={event.value} for session {event.session_id}")
 
     def get_session_events(self, session_id: str) -> List[dict]:
-        events = self._events.get(session_id, [])
-        return [asdict(e) for e in events]
+        # Retrieve from SQLite
+        return db.get_session_events(session_id)
 
-# Global singleton for demonstration/local development
+# Global singleton
 event_store = EventStore()

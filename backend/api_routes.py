@@ -6,6 +6,8 @@ from backend.session_manager import session_manager
 from backend.event_store import event_store, Event
 from backend.risk_engine import risk_engine
 
+from typing import Optional, Dict, Any
+
 class SessionStartRequest(BaseModel):
     candidate_id: str
 
@@ -14,6 +16,7 @@ class EventSchema(BaseModel):
     signal: str
     value: float
     timestamp: float
+    details: Optional[Dict[str, Any]] = None
 
 app = FastAPI(title="Project JD Backend")
 
@@ -25,9 +28,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from backend import db
+
 @app.post("/session/start")
 async def start_session(req: SessionStartRequest):
     session_id = session_manager.start_session(req.candidate_id)
+    db.log_session(session_id, req.candidate_id)
     return {"session_id": session_id}
 
 @app.get("/sessions")
